@@ -9,6 +9,7 @@ import {
   Lock,
   MessageCircle,
   Smartphone,
+  UserPlus,
   Wallet,
 } from "lucide-react";
 
@@ -46,11 +47,16 @@ function buildWechatLoginUrl() {
   return `https://open.weixin.qq.com/connect/qrconnect?${params.toString()}#wechat_redirect`;
 }
 
+
+
 export default function LoginPage() {
   const router = useRouter();
-  const [loginMode, setLoginMode] = useState<"phone" | "password">("phone");
+  const [authMode, setAuthMode] = useState<"phone" | "password" | "register">(
+    "phone",
+  );
   const [phone, setPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [verificationCode, setVerificationCode] = useState("");
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -63,15 +69,25 @@ export default function LoginPage() {
 
     const account = phone.trim();
     const credential =
-      loginMode === "password" ? password : verificationCode.trim();
+      authMode === "phone" ? verificationCode.trim() : password;
 
     if (!account) {
-      setErrorMessage("请输入手机号");
+      setErrorMessage(authMode === "register" ? "请输入账号" : "请输入手机号");
       return;
     }
 
     if (!credential) {
-      setErrorMessage(loginMode === "password" ? "请输入密码" : "请输入验证码");
+      setErrorMessage(authMode === "phone" ? "请输入验证码" : "请输入密码");
+      return;
+    }
+
+    if (authMode === "register" && password.length < 6) {
+      setErrorMessage("密码至少需要 6 位");
+      return;
+    }
+
+    if (authMode === "register" && password !== confirmPassword) {
+      setErrorMessage("两次输入的密码不一致");
       return;
     }
 
@@ -83,35 +99,55 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch("/api/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      const response = await fetch(
+        authMode === "register" ? "/api/auth/register" : "/api/auth/login",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            username: account,
+            loginType: authMode,
+            password: authMode !== "phone" ? password : undefined,
+            verificationCode:
+              authMode === "phone" ? verificationCode.trim() : undefined,
+          }),
         },
-        body: JSON.stringify({
-          account,
-          loginType: loginMode,
-          password: loginMode === "password" ? password : undefined,
-          verificationCode:
-            loginMode === "phone" ? verificationCode.trim() : undefined,
-        }),
-      });
+      );
 
       const result = (await response.json().catch(() => null)) as
-        | { token?: string; message?: string }
+        | {
+            token?: string;
+            message?: string;
+            data?: { token?: string };
+            error?: { message?: string };
+          }
         | null;
 
       if (!response.ok) {
-        throw new Error(result?.message ?? "登录失败，请稍后重试");
+        throw new Error(
+          result?.message ??
+            result?.error?.message ??
+            (authMode === "register" ? "注册失败，请稍后重试" : "登录失败，请稍后重试"),
+        );
       }
 
-      if (result?.token) {
-        localStorage.setItem("token", result.token);
+      const token = result?.token ?? result?.data?.token;
+
+      if (token) {
+        localStorage.setItem("token", token);
       }
 
       router.push("/");
     } catch (error) {
-      setErrorMessage(error instanceof Error ? error.message : "登录失败");
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : authMode === "register"
+            ? "注册失败"
+            : "登录失败",
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -172,43 +208,65 @@ export default function LoginPage() {
             </div>
 
             <div className="lg:pl-2">
-              <div className="mb-9 flex items-center gap-8 text-base font-bold">
-                <button
-                  className={
-                    loginMode === "phone" ? "text-black" : "text-gray-400"
-                  }
-                  type="button"
-                  onClick={() => setLoginMode("phone")}
-                >
-                  手机登录
-                </button>
-                <button
-                  className={
-                    loginMode === "password" ? "text-black" : "text-gray-400"
-                  }
-                  type="button"
-                  onClick={() => setLoginMode("password")}
-                >
-                  密码登录
-                </button>
-              </div>
+              {authMode === "register" ? (
+                <div className="mb-9 flex items-center justify-between text-base font-bold">
+                  <h2>账号注册</h2>
+                  <button
+                    className="text-sm font-semibold text-gray-400 transition hover:text-black"
+                    type="button"
+                    onClick={() => setAuthMode("phone")}
+                  >
+                    返回登录
+                  </button>
+                </div>
+              ) : (
+                <div className="mb-9 flex items-center gap-8 text-base font-bold">
+                  <button
+                    className={
+                      authMode === "phone" ? "text-black" : "text-gray-400"
+                    }
+                    type="button"
+                    onClick={() => setAuthMode("phone")}
+                  >
+                    手机登录
+                  </button>
+                  <button
+                    className={
+                      authMode === "password" ? "text-black" : "text-gray-400"
+                    }
+                    type="button"
+                    onClick={() => setAuthMode("password")}
+                  >
+                    密码登录
+                  </button>
+                </div>
+              )}
 
               <form className="space-y-4" onSubmit={handleLogin}>
                 <label className="relative block">
-                  <Smartphone
-                    className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
-                    size={18}
-                  />
+                  {authMode === "register" ? (
+                    <UserPlus
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+                      size={18}
+                    />
+                  ) : (
+                    <Smartphone
+                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+                      size={18}
+                    />
+                  )}
                   <input
                     className="h-12 w-full rounded-xl border border-gray-200 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-300 focus:border-gray-900"
-                    placeholder="请输入您的手机号"
-                    type="tel"
+                    placeholder={
+                      authMode === "register" ? "请输入注册账号" : "请输入您的手机号"
+                    }
+                    type={authMode === "register" ? "text" : "tel"}
                     value={phone}
                     onChange={(event) => setPhone(event.target.value)}
                   />
                 </label>
 
-                {loginMode === "phone" ? (
+                {authMode === "phone" ? (
                   <label className="relative block">
                     <input
                       className="h-12 w-full rounded-xl border border-gray-200 px-4 pr-32 text-sm outline-none transition placeholder:text-gray-300 focus:border-gray-900"
@@ -227,19 +285,41 @@ export default function LoginPage() {
                     </button>
                   </label>
                 ) : (
-                  <label className="relative block">
-                    <Lock
-                      className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
-                      size={18}
-                    />
-                    <input
-                      className="h-12 w-full rounded-xl border border-gray-200 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-300 focus:border-gray-900"
-                      placeholder="请输入密码"
-                      type="password"
-                      value={password}
-                      onChange={(event) => setPassword(event.target.value)}
-                    />
-                  </label>
+                  <>
+                    <label className="relative block">
+                      <Lock
+                        className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+                        size={18}
+                      />
+                      <input
+                        className="h-12 w-full rounded-xl border border-gray-200 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-300 focus:border-gray-900"
+                        placeholder={
+                          authMode === "register" ? "请设置密码" : "请输入密码"
+                        }
+                        type="password"
+                        value={password}
+                        onChange={(event) => setPassword(event.target.value)}
+                      />
+                    </label>
+
+                    {authMode === "register" ? (
+                      <label className="relative block">
+                        <Lock
+                          className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-300"
+                          size={18}
+                        />
+                        <input
+                          className="h-12 w-full rounded-xl border border-gray-200 pl-11 pr-4 text-sm outline-none transition placeholder:text-gray-300 focus:border-gray-900"
+                          placeholder="请再次输入密码"
+                          type="password"
+                          value={confirmPassword}
+                          onChange={(event) =>
+                            setConfirmPassword(event.target.value)
+                          }
+                        />
+                      </label>
+                    ) : null}
+                  </>
                 )}
 
                 <label className="flex items-start gap-2 text-xs leading-5 text-gray-400">
@@ -265,11 +345,41 @@ export default function LoginPage() {
                 <button
                   className="h-13 w-full rounded-xl bg-[#1c1c1c] py-4 text-base font-bold text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-300"
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isSubmitting}       
                 >
-                  {isSubmitting ? "登录中..." : "立即登录"}
+                  {isSubmitting
+                    ? authMode === "register"
+                      ? "注册中..."
+                      : "登录中..."
+                    : authMode === "register"
+                      ? "立即注册"
+                      : "立即登录"}
                 </button>
               </form>
+
+              {authMode === "register" ? (
+                <p className="mt-6 text-center text-sm text-gray-500">
+                  已有账号？{" "}
+                  <button
+                    className="font-semibold text-slate-600 transition hover:text-black"
+                    type="button"
+                    onClick={() => setAuthMode("phone")}
+                  >
+                    登录
+                  </button>
+                </p>
+              ) : (
+                <p className="mt-6 text-center text-sm text-gray-500">
+                  没有账号？{" "}
+                  <button
+                    className="font-semibold text-slate-600 transition hover:text-black"
+                    type="button"
+                    onClick={() => setAuthMode("register")}
+                  >
+                    注册
+                  </button>
+                </p>
+              )}
 
               <p className="mt-8 text-center text-xs text-gray-400">
                 根据您的地区，已为您跳转至国内网站
