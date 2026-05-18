@@ -14,7 +14,7 @@ import {
   TrendingUp,
   Globe,
 } from "lucide-react";
-
+import { Button } from "@/components/ui/button"
 const AILedgerLanding = () => {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
 
@@ -41,7 +41,7 @@ const AILedgerLanding = () => {
   return (
     <div className="min-h-screen bg-white font-sans text-gray-900 overflow-x-hidden">
       <nav className="fixed top-0 w-full bg-white/80 backdrop-blur-md z-50 border-b border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className=" mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
             {/* Logo */}
             <div className="flex items-center gap-2">
@@ -63,7 +63,7 @@ const AILedgerLanding = () => {
 
             {/* Auth Buttons */}
             <div className="hidden md:flex items-center gap-4">
-              <button className="text-sm font-medium px-4 py-2">EN</button>
+              <Button className="text-sm font-medium px-4 py-2">EN</Button>
               <Link
                 href="/login"
                 className="text-sm font-medium bg-gray-100 px-6 py-2 rounded-full hover:bg-gray-200 transition-all"
@@ -97,6 +97,7 @@ const AILedgerLanding = () => {
                 >
                   登录
                 </Link>
+
               </div>
             </div>
           ) : null}
