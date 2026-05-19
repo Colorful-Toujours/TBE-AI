@@ -37,7 +37,7 @@ export function AppSidebar() {
 
   return (
     <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
-      <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
+      <div className="flex h-16 items-center gap-2.5 border-sidebar-border px-5">
         <div className="flex size-8 items-center justify-center overflow-hidden rounded-lg ">
           <Image src="/TBE.png" alt="TBE" width={32} height={32} />
         </div>

@@ -16,6 +16,14 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
+  Breadcrumb,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/components/ui/breadcrumb";
+import {
   clearStoredUser,
   getStoredUser,
   getUserInitials,
@@ -40,6 +48,34 @@ function resolvePageTitle(pathname: string) {
   return matched?.[1] ?? "工作台";
 }
 
+function AppBreadcrumb({ pathname }: { pathname: string }) {
+  const isRoot = pathname === "/workBench";
+
+  return (
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          {isRoot ? (
+            <BreadcrumbPage>工作台</BreadcrumbPage>
+          ) : (
+            <BreadcrumbLink asChild>
+              <Link href="/workBench">工作台</Link>
+            </BreadcrumbLink>
+          )}
+        </BreadcrumbItem>
+        {!isRoot ? (
+          <>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>{resolvePageTitle(pathname)}</BreadcrumbPage>
+            </BreadcrumbItem>
+          </>
+        ) : null}
+      </BreadcrumbList>
+    </Breadcrumb>
+  );
+}
+
 export function AppHeader() {
   const pathname = usePathname();
   const router = useRouter();
@@ -59,10 +95,8 @@ export function AppHeader() {
   const initials = getUserInitials(displayName);
 
   return (
-    <header className="sticky top-0 z-40 flex h-[64px] shrink-0 items-center justify-between gap-4 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <h1 className="text-base font-semibold tracking-tight">
-        {resolvePageTitle(pathname)}
-      </h1>
+    <header className="sticky top-0 z-40 flex h-[60px] shrink-0 items-center justify-between gap-4 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      <AppBreadcrumb pathname={pathname} />
 
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
