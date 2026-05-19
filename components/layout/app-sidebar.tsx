@@ -8,6 +8,7 @@ import {
   Receipt,
   Settings,
   type LucideIcon,
+  CreditCard,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -23,6 +24,7 @@ const navItems: NavItem[] = [
   { title: "工作台", href: "/workBench", icon: LayoutDashboard, exact: true },
   { title: "账单", href: "/workBench/bill", icon: Receipt },
   { title: "设置", href: "/workBench/settings", icon: Settings },
+  { title: "支付", href: "/workBench/payment", icon: CreditCard },
 ];
 
 function isActive(pathname: string, href: string, exact?: boolean) {
@@ -34,9 +36,9 @@ export function AppSidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="flex h-full w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
+    <aside className="sticky top-0 flex h-dvh w-60 shrink-0 flex-col border-r border-sidebar-border bg-sidebar text-sidebar-foreground">
       <div className="flex h-16 items-center gap-2.5 border-b border-sidebar-border px-5">
-        <div className="flex size-8 items-center justify-center overflow-hidden rounded-lg bg-red-600">
+        <div className="flex size-8 items-center justify-center overflow-hidden rounded-lg ">
           <Image src="/TBE.png" alt="TBE" width={32} height={32} />
         </div>
         <span className="text-sm font-semibold tracking-tight">AI LEDGER</span>

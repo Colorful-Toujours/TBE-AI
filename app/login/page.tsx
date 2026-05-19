@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { setStoredUser } from "@/lib/auth/session";
+import { setToken } from "@/lib/request";
 import { useMemo, useState } from "react";
 import {
   Code2,
@@ -134,12 +136,24 @@ export default function LoginPage() {
       }
 
       const token = result?.token ?? result?.data?.token;
+      const userFromApi =
+        (result as { user?: { id?: string; name?: string; avatar?: string; email?: string } })
+          ?.user ??
+        (result as { data?: { user?: { id?: string; name?: string; avatar?: string; email?: string } } })
+          ?.data?.user;
 
       if (token) {
-        localStorage.setItem("token", token);
+        setToken(token);
       }
 
-      router.push("/");
+      setStoredUser({
+        id: userFromApi?.id,
+        name: userFromApi?.name ?? account,
+        avatar: userFromApi?.avatar ?? null,
+        email: userFromApi?.email ?? (account.includes("@") ? account : null),
+      });
+
+      router.push("/workBench");
     } catch (error) {
       setErrorMessage(
         error instanceof Error

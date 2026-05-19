@@ -17,7 +17,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className={cn("h-full antialiased", "font-sans", geist.variable)}>
-      <body className="min-h-full">{children}</body>
+      <body className="min-h-dvh">{children}</body>
     </html>
   );
 }
