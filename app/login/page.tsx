@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { setStoredUser } from "@/lib/auth/session";
 import { setToken } from "@/lib/request";
 import { useMemo, useState } from "react";
+import { motion } from "motion/react"
 import {
   Code2,
   FileText,
@@ -244,7 +245,8 @@ export default function LoginPage() {
                   >
                     手机登录
                   </button>
-                  <button
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}  whileTap={{ scale: 0.95 }}
                     className={
                       authMode === "password" ? "text-black" : "text-gray-400"
                     }
@@ -252,7 +254,7 @@ export default function LoginPage() {
                     onClick={() => setAuthMode("password")}
                   >
                     密码登录
-                  </button>
+                  </motion.button>
                 </div>
               )}
 
