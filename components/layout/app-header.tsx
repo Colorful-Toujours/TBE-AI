@@ -27,14 +27,21 @@ import {
   clearStoredUser,
   getStoredUser,
   getUserInitials,
+  USER_UPDATED_EVENT,
   type StoredUser,
 } from "@/lib/auth/session";
+import { ThemeToggle } from "@/components/theme-toggle";
+import { recordOperation } from "@/lib/audit-log";
 import { setToken } from "@/lib/request";
 
 const pageTitles: Record<string, string> = {
   "/workBench": "工作台",
   "/workBench/bill": "账单",
+  "/workBench/materials": "材料",
+  "/workBench/user": "用户管理",
   "/workBench/payment": "支付",
+  "/workBench/chart": "数据预览",
+  "/workBench/logs": "操作日志",
   "/workBench/settings": "设置",
 };
 
@@ -82,10 +89,21 @@ export function AppHeader() {
   const [user, setUser] = useState<StoredUser | null>(null);
 
   useEffect(() => {
-    setUser(getStoredUser());
+    const refresh = () => setUser(getStoredUser());
+    refresh();
+    window.addEventListener(USER_UPDATED_EVENT, refresh);
+    return () => window.removeEventListener(USER_UPDATED_EVENT, refresh);
   }, [pathname]);
 
   function handleLogout() {
+    recordOperation({
+      action: "logout",
+      module: "auth",
+      target: "系统退出",
+      detail: `${user?.name ?? "用户"} 退出登录`,
+      operator: user?.name,
+      operatorId: user?.id,
+    });
     setToken(null);
     clearStoredUser();
     router.push("/login");
@@ -95,9 +113,11 @@ export function AppHeader() {
   const initials = getUserInitials(displayName);
 
   return (
-    <header className="sticky top-0 z-40 flex h-[60px] shrink-0 items-center justify-between gap-4 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+    <header className="sticky top-0 z-40 flex h-[60px] shrink-0 items-center justify-between gap-4 border-b border-border bg-background/95 px-6 backdrop-blur supports-[backdrop-filter]:bg-background/80 ">
       <AppBreadcrumb pathname={pathname} />
 
+      <div className="flex items-center gap-1">
+        <ThemeToggle />
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
@@ -153,6 +173,7 @@ export function AppHeader() {
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+      </div>
     </header>
   );
 }

@@ -9,10 +9,13 @@ import {
   Settings,
   type LucideIcon,
   CreditCard,
+  MonitorCog,
+  ChartNoAxesCombined,
+  User,
+  Package,
+  ScrollText,
 } from "lucide-react";
-
 import { cn } from "@/lib/utils";
-
 type NavItem = {
   title: string;
   href: string;
@@ -21,8 +24,12 @@ type NavItem = {
 };
 
 const navItems: NavItem[] = [
-  { title: "工作台", href: "/workBench", icon: LayoutDashboard, exact: true },
+  { title: "数据预览", href: "/workBench/chart", icon: ChartNoAxesCombined, exact: true },
+  { title: "工作台", href: "/workBench/home", icon: MonitorCog},
   { title: "账单", href: "/workBench/bill", icon: Receipt },
+  { title: "材料", href: "/workBench/materials", icon: Package },
+  { title: "用户管理", href: "/workBench/user", icon: User },
+  { title: "操作日志", href: "/workBench/logs", icon: ScrollText },
   { title: "设置", href: "/workBench/settings", icon: Settings },
   { title: "支付", href: "/workBench/payment", icon: CreditCard },
 ];
@@ -41,7 +48,7 @@ export function AppSidebar() {
         <div className="flex size-8 items-center justify-center overflow-hidden rounded-lg ">
           <Image src="/TBE.png" alt="TBE" width={32} height={32} />
         </div>
-        <span className="text-sm font-semibold tracking-tight">AI LEDGER</span>
+        <span className="text-sm font-semibold tracking-tight">AI Ledger</span>
       </div>
 
       <nav className="flex-1 space-y-1 p-3">

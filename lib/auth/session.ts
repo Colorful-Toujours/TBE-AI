@@ -3,7 +3,10 @@ export type StoredUser = {
   name: string;
   avatar?: string | null;
   email?: string | null;
+  phone?: string | null;
 };
+
+export const USER_UPDATED_EVENT = "user-updated";
 
 const USER_STORAGE_KEY = "user";
 
@@ -22,6 +25,7 @@ export function getStoredUser(): StoredUser | null {
 export function setStoredUser(user: StoredUser) {
   if (typeof window === "undefined") return;
   localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(user));
+  window.dispatchEvent(new Event(USER_UPDATED_EVENT));
 }
 
 export function clearStoredUser() {

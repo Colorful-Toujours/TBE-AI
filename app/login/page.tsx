@@ -2,10 +2,13 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { recordOperation } from "@/lib/audit-log";
+import { saveLoginPassword } from "@/lib/auth/credentials";
 import { setStoredUser } from "@/lib/auth/session";
 import { setToken } from "@/lib/request";
 import { useMemo, useState } from "react";
-import { motion } from "motion/react"
+import { motion } from "motion/react";
+import { ThemeToggle } from "@/components/theme-toggle";
 import {
   Code2,
   FileText,
@@ -137,25 +140,59 @@ export default function LoginPage() {
       }
 
       const token = result?.token ?? result?.data?.token;
+      type ApiUser = {
+        id?: string;
+        name?: string;
+        avatar?: string;
+        email?: string;
+        phone?: string;
+      };
       const userFromApi =
-        (result as { user?: { id?: string; name?: string; avatar?: string; email?: string } })
-          ?.user ??
-        (result as { data?: { user?: { id?: string; name?: string; avatar?: string; email?: string } } })
-          ?.data?.user;
+        (result as { user?: ApiUser })?.user ??
+        (result as { data?: { user?: ApiUser } })?.data?.user;
 
       if (token) {
         setToken(token);
       }
 
-      setStoredUser({
+      const storedUser = {
         id: userFromApi?.id,
         name: userFromApi?.name ?? account,
         avatar: userFromApi?.avatar ?? null,
-        email: userFromApi?.email ?? (account.includes("@") ? account : null),
+        email:
+          userFromApi?.email ??
+          (account.includes("@") ? account : null),
+        phone:
+          userFromApi?.phone ??
+          (/^1\d{10}$/.test(account) ? account : null),
+      };
+
+      setStoredUser(storedUser);
+
+      if (authMode === "password" && password) {
+        saveLoginPassword(storedUser.id, storedUser.name, password);
+      }
+
+      recordOperation({
+        action: "login",
+        module: "auth",
+        target: "系统登录",
+        detail: `${storedUser.name} 登录成功（${authMode === "phone" ? "验证码" : "密码"}）`,
+        operator: storedUser.name,
+        operatorId: storedUser.id,
       });
 
       router.push("/workBench");
     } catch (error) {
+      recordOperation({
+        action: "login",
+        module: "auth",
+        target: "系统登录",
+        detail:
+          error instanceof Error ? error.message : "登录失败",
+        status: "failure",
+        operator: phone.trim() || "未知用户",
+      });
       setErrorMessage(
         error instanceof Error
           ? error.message
@@ -169,7 +206,10 @@ export default function LoginPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#f3f3f3] px-5 py-12 text-[#171717] sm:px-8">
+    <main className="relative min-h-screen bg-background px-5 py-12 text-foreground sm:px-8">
+      <div className="absolute top-4 right-4 z-50 sm:top-6 sm:right-6">
+        <ThemeToggle />
+      </div>
       <div className="mx-auto flex min-h-[calc(100vh-6rem)] max-w-4xl flex-col justify-center">
         <Link
           href="/"
@@ -181,7 +221,7 @@ export default function LoginPage() {
           AI LEDGER
         </Link>
 
-        <section className="rounded-3xl bg-white p-6 shadow-sm sm:p-10">
+        <section className="rounded-3xl border border-border bg-card p-6 shadow-sm sm:p-10">
           <div className="grid gap-10 lg:grid-cols-[0.85fr_1.15fr]">
             <div className="border-gray-100 lg:border-r lg:pr-10">
               <h1 className="text-center text-lg font-bold">扫码登录</h1>

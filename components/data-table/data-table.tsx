@@ -4,13 +4,16 @@ import * as React from "react";
 import {
   ColumnDef,
   ColumnFiltersState,
+  ExpandedState,
   OnChangeFn,
   PaginationState,
+  Row,
   RowSelectionState,
   SortingState,
   VisibilityState,
   flexRender,
   getCoreRowModel,
+  getExpandedRowModel,
   getFilteredRowModel,
   getPaginationRowModel,
   getSortedRowModel,
@@ -18,6 +21,11 @@ import {
 } from "@tanstack/react-table";
 import { Loader2 } from "lucide-react";
 
+import {
+  DataTableFilterField,
+  getDataTableQueryParams,
+  type DataTableQueryParams,
+} from "@/components/data-table/data-table-filter-fields";
 import { DataTablePagination } from "@/components/data-table/data-table-pagination";
 import { DataTableToolbar } from "@/components/data-table/data-table-toolbar";
 import {
@@ -46,6 +54,10 @@ export type DataTableProps<TData, TValue> = {
   pageSizeOptions?: number[];
   /** 工具栏右侧自定义内容 */
   toolbar?: React.ReactNode;
+  /** 动态列筛选配置 */
+  filters?: DataTableFilterField<TData>[];
+  /** 筛选变化时回调（适合请求接口） */
+  onQueryChange?: (query: DataTableQueryParams) => void;
   /** 全局搜索 */
   enableGlobalFilter?: boolean;
   /** 列排序 */
@@ -78,7 +90,13 @@ export type DataTableProps<TData, TValue> = {
   /** 列可见性受控 */
   columnVisibility?: VisibilityState;
   onColumnVisibilityChange?: OnChangeFn<VisibilityState>;
+  /** 列可见性初始值 */
+  defaultColumnVisibility?: VisibilityState;
   getRowId?: (row: TData, index: number) => string;
+  /** 行展开 */
+  enableExpanding?: boolean;
+  renderSubRow?: (row: Row<TData>) => React.ReactNode;
+  getRowCanExpand?: (row: Row<TData>) => boolean;
 };
 
 export function DataTable<TData, TValue>({
@@ -91,6 +109,8 @@ export function DataTable<TData, TValue>({
   pageSize = 10,
   pageSizeOptions,
   toolbar,
+  filters,
+  onQueryChange,
   enableGlobalFilter = true,
   enableSorting = true,
   enableRowSelection = true,
@@ -113,14 +133,19 @@ export function DataTable<TData, TValue>({
   onRowSelectionChange,
   columnVisibility: controlledColumnVisibility,
   onColumnVisibilityChange,
+  defaultColumnVisibility,
   getRowId,
+  enableExpanding = false,
+  renderSubRow,
+  getRowCanExpand,
 }: DataTableProps<TData, TValue>) {
   const [sorting, setSorting] = React.useState<SortingState>([]);
+  const [expanded, setExpanded] = React.useState<ExpandedState>({});
   const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>(
     [],
   );
   const [columnVisibility, setColumnVisibility] =
-    React.useState<VisibilityState>({});
+    React.useState<VisibilityState>(defaultColumnVisibility ?? {});
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({});
   const [globalFilter, setGlobalFilter] = React.useState("");
   const [pagination, setPagination] = React.useState<PaginationState>({
@@ -138,6 +163,7 @@ export function DataTable<TData, TValue>({
       rowSelection: controlledRowSelection ?? rowSelection,
       globalFilter: controlledGlobalFilter ?? globalFilter,
       pagination: controlledPagination ?? pagination,
+      expanded,
     },
     enableRowSelection,
     enableSorting,
@@ -153,7 +179,10 @@ export function DataTable<TData, TValue>({
     onRowSelectionChange: onRowSelectionChange ?? setRowSelection,
     onGlobalFilterChange: onGlobalFilterChange ?? setGlobalFilter,
     onPaginationChange: onPaginationChange ?? setPagination,
+    onExpandedChange: setExpanded,
+    getRowCanExpand: getRowCanExpand ?? (() => enableExpanding),
     getCoreRowModel: getCoreRowModel(),
+    getExpandedRowModel: enableExpanding ? getExpandedRowModel() : undefined,
     getFilteredRowModel: manualFiltering ? undefined : getFilteredRowModel(),
     getPaginationRowModel:
       enablePagination && !manualPagination
@@ -163,8 +192,20 @@ export function DataTable<TData, TValue>({
     getRowId,
   });
 
+  const columnFiltersState =
+    controlledColumnFilters ?? columnFilters;
+  const globalFilterState = controlledGlobalFilter ?? globalFilter;
+
+  React.useEffect(() => {
+    if (!onQueryChange) return;
+    onQueryChange(getDataTableQueryParams(globalFilterState, columnFiltersState));
+  }, [onQueryChange, columnFiltersState, globalFilterState]);
+
   const showToolbar =
-    enableGlobalFilter || enableColumnVisibility || Boolean(toolbar);
+    enableGlobalFilter ||
+    enableColumnVisibility ||
+    Boolean(toolbar) ||
+    Boolean(filters?.length);
 
   return (
     <div className={cn("space-y-4", className)}>
@@ -174,6 +215,7 @@ export function DataTable<TData, TValue>({
           searchPlaceholder={searchPlaceholder}
           enableGlobalFilter={enableGlobalFilter}
           enableColumnVisibility={enableColumnVisibility}
+          filters={filters}
           toolbar={toolbar}
         />
       ) : null}
@@ -208,19 +250,28 @@ export function DataTable<TData, TValue>({
               </TableRow>
             ) : table.getRowModel().rows.length ? (
               table.getRowModel().rows.map((row) => (
-                <TableRow
-                  key={row.id}
-                  data-state={row.getIsSelected() && "selected"}
-                >
-                  {row.getVisibleCells().map((cell) => (
-                    <TableCell key={cell.id}>
-                      {flexRender(
-                        cell.column.columnDef.cell,
-                        cell.getContext(),
-                      )}
-                    </TableCell>
-                  ))}
-                </TableRow>
+                <React.Fragment key={row.id}>
+                  <TableRow data-state={row.getIsSelected() && "selected"}>
+                    {row.getVisibleCells().map((cell) => (
+                      <TableCell key={cell.id}>
+                        {flexRender(
+                          cell.column.columnDef.cell,
+                          cell.getContext(),
+                        )}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                  {enableExpanding && row.getIsExpanded() && renderSubRow ? (
+                    <TableRow>
+                      <TableCell
+                        colSpan={row.getVisibleCells().length}
+                        className="bg-muted/30 p-0"
+                      >
+                        {renderSubRow(row)}
+                      </TableCell>
+                    </TableRow>
+                  ) : null}
+                </React.Fragment>
               ))
             ) : (
               <TableRow>

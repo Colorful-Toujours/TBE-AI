@@ -1,0 +1,63 @@
+import type { Material } from "./types";
+
+export const MATERIAL_SEED: Material[] = [
+  {
+    id: "mat-001",
+    name: "水泥",
+    category: "建材",
+    unit: "袋",
+    unitPrice: 45,
+    stock: 320,
+    remark: "42.5 普通硅酸盐",
+  },
+  {
+    id: "mat-002",
+    name: "瓷砖",
+    category: "建材",
+    unit: "㎡",
+    unitPrice: 38,
+    stock: 1500,
+    remark: "800×800 抛光砖",
+  },
+  {
+    id: "mat-003",
+    name: "防水涂料",
+    category: "建材",
+    unit: "桶",
+    unitPrice: 168,
+    stock: 86,
+  },
+  {
+    id: "mat-004",
+    name: "电线",
+    category: "电气",
+    unit: "米",
+    unitPrice: 3.5,
+    stock: 5000,
+    remark: "BV2.5",
+  },
+  {
+    id: "mat-005",
+    name: "开关插座",
+    category: "电气",
+    unit: "个",
+    unitPrice: 28,
+    stock: 240,
+  },
+  {
+    id: "mat-006",
+    name: "乳胶漆",
+    category: "涂料",
+    unit: "桶",
+    unitPrice: 320,
+    stock: 45,
+  },
+  {
+    id: "mat-007",
+    name: "铝合金门窗",
+    category: "门窗",
+    unit: "樘",
+    unitPrice: 1200,
+    stock: 12,
+  },
+];

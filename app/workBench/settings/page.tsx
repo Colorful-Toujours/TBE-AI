@@ -1,8 +1,9 @@
+import { SettingsForm } from "./settings-form";
+
 export default function SettingsPage() {
   return (
-    <div className="p-8">
-      <h1 className="text-2xl font-semibold tracking-tight">设置</h1>
-      <p className="mt-2 text-sm text-muted-foreground">系统与账户设置。</p>
+    <div className="space-y-4 p-4 sm:p-6">
+      <SettingsForm />
     </div>
   );
 }
