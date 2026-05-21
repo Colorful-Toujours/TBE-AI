@@ -19,6 +19,16 @@ import {
   Wallet,
 } from "lucide-react";
 
+function formatApiMessage(message: unknown): string {
+  if (Array.isArray(message)) {
+    return message.map(String).join("；");
+  }
+  if (typeof message === "string") {
+    return message;
+  }
+  return "";
+}
+
 const qrCells = [
   1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0,
   1, 0, 0, 0, 1, 0, 1, 1, 0, 0, 1, 0,
@@ -105,13 +115,10 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true);
 
-      const response = await fetch(
-        authMode === "register" ? "/api/auth/register" : "/api/auth/login",
-        {
+      if (authMode === "register") {
+        const response = await fetch("/api/auth/register", {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
+          headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             username: account,
             loginType: authMode,
