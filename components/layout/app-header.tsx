@@ -32,7 +32,7 @@ import {
 } from "@/lib/auth/session";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { recordOperation } from "@/lib/audit-log";
-import { setToken } from "@/lib/request";
+import { setToken } from "@/lib/request/client";
 
 const pageTitles: Record<string, string> = {
   "/workBench": "工作台",
