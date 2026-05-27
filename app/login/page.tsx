@@ -6,7 +6,7 @@ import { recordOperation } from "@/lib/audit-log";
 import { sendSmsCode } from "@/lib/backend-api";
 import { saveLoginPassword } from "@/lib/auth/credentials";
 import { setStoredUser } from "@/lib/auth/session";
-import { setToken } from "@/lib/request";
+import { setToken } from "@/lib/request/client";
 import { useMemo, useState } from "react";
 import { motion } from "motion/react";
 import { ThemeToggle } from "@/components/theme-toggle";
@@ -19,16 +19,6 @@ import {
   UserPlus,
   Wallet,
 } from "lucide-react";
-
-function formatApiMessage(message: unknown): string {
-  if (Array.isArray(message)) {
-    return message.map(String).join("；");
-  }
-  if (typeof message === "string") {
-    return message;
-  }
-  return "";
-}
 
 const qrCells = [
   1, 1, 1, 1, 1, 0, 0, 1, 0, 1, 1, 0,
@@ -150,8 +140,9 @@ export default function LoginPage() {
     try {
       setIsSubmitting(true);
 
-      if (authMode === "register") {
-        const response = await fetch("/api/auth/register", {
+      const response = await fetch(
+        authMode === "register" ? "/api/auth/register" : "/api/auth/login",
+        {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({

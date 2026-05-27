@@ -1,4 +1,4 @@
-import { http } from "@/lib/request";
+import { http } from "@/lib/request/client";
 import type { Material } from "@/lib/materials/types";
 import type { Bill } from "@/app/workBench/bill/columns";
 import type { SystemUser } from "@/app/workBench/user/columns";
