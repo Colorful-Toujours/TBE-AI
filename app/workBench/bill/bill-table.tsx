@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import type { Row } from "@tanstack/react-table";
 import { Plus } from "lucide-react";
 
@@ -21,6 +21,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { recordOperation } from "@/lib/audit-log";
+import {
+  createBill,
+  deleteBill,
+  listBills,
+  updateBill,
+} from "@/lib/backend-api";
 
 import { BillFormDialog, type BillFormValues } from "./bill-form-dialog";
 import { BillMaterialsTable } from "./bill-materials-table";
@@ -45,6 +51,28 @@ export function BillTable({ initialData }: BillTableProps) {
   const [formOpen, setFormOpen] = useState(false);
   const [editingBill, setEditingBill] = useState<Bill | null>(null);
   const [deletingBill, setDeletingBill] = useState<Bill | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [apiMessage, setApiMessage] = useState("");
+
+  const loadBills = useCallback(async (params?: DataTableQueryParams) => {
+    setLoading(true);
+    setApiMessage("");
+    try {
+      const result = await listBills(params);
+      setBills(result.items);
+    } catch (error) {
+      setApiMessage(error instanceof Error ? error.message : "账单数据加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadBills(query);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadBills, query]);
 
   const handleCreate = useCallback(() => {
     setEditingBill(null);
@@ -60,43 +88,53 @@ export function BillTable({ initialData }: BillTableProps) {
     setDeletingBill(bill);
   }, []);
 
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingBill) return;
-    setBills((prev) => prev.filter((b) => b.id !== deletingBill.id));
-    recordOperation({
-      action: "delete",
-      module: "bill",
-      target: `账单 ${deletingBill.id}`,
-      detail: `删除账单：${deletingBill.user} · ${deletingBill.community} ${deletingBill.unit}`,
-    });
-    setDeletingBill(null);
+    setApiMessage("");
+    try {
+      await deleteBill(deletingBill.id);
+      setBills((prev) => prev.filter((b) => b.id !== deletingBill.id));
+      recordOperation({
+        action: "delete",
+        module: "bill",
+        target: `账单 ${deletingBill.id}`,
+        detail: `删除账单：${deletingBill.user} · ${deletingBill.community} ${deletingBill.unit}`,
+      });
+      setDeletingBill(null);
+    } catch (error) {
+      setApiMessage(error instanceof Error ? error.message : "删除账单失败");
+    }
   }, [deletingBill]);
 
   const handleFormSubmit = useCallback(
-    (values: BillFormValues) => {
-      if (editingBill) {
-        setBills((prev) =>
-          prev.map((b) =>
-            b.id === editingBill.id ? { ...values, id: editingBill.id } : b,
-          ),
-        );
-        recordOperation({
-          action: "update",
-          module: "bill",
-          target: `账单 ${editingBill.id}`,
-          detail: `修改账单：${values.user} · ${values.community} ${values.unit}`,
-        });
-      } else {
-        const newId = `bill-${Date.now()}`;
-        setBills((prev) => [...prev, { ...values, id: newId }]);
-        recordOperation({
-          action: "create",
-          module: "bill",
-          target: `账单 ${newId}`,
-          detail: `新增账单：${values.user} · ${values.community} ${values.unit}，材料 ${values.materials.length} 项`,
-        });
+    async (values: BillFormValues) => {
+      setApiMessage("");
+      try {
+        if (editingBill) {
+          const updated = await updateBill(editingBill.id, values);
+          setBills((prev) =>
+            prev.map((b) => (b.id === editingBill.id ? updated : b)),
+          );
+          recordOperation({
+            action: "update",
+            module: "bill",
+            target: `账单 ${editingBill.id}`,
+            detail: `修改账单：${values.user} · ${values.community} ${values.unit}`,
+          });
+        } else {
+          const created = await createBill(values);
+          setBills((prev) => [...prev, created]);
+          recordOperation({
+            action: "create",
+            module: "bill",
+            target: `账单 ${created.id}`,
+            detail: `新增账单：${values.user} · ${values.community} ${values.unit}，材料 ${values.materials.length} 项`,
+          });
+        }
+        setEditingBill(null);
+      } catch (error) {
+        setApiMessage(error instanceof Error ? error.message : "保存账单失败");
       }
-      setEditingBill(null);
     },
     [editingBill],
   );
@@ -129,6 +167,7 @@ export function BillTable({ initialData }: BillTableProps) {
         columns={columns}
         data={bills}
         getRowId={(row) => row.id}
+        loading={loading}
         enableGlobalFilter={false}
         enableRowSelection={false}
         filters={billFilters}
@@ -154,6 +193,10 @@ export function BillTable({ initialData }: BillTableProps) {
         <p className="text-xs text-muted-foreground">
           当前查询：{JSON.stringify(query)}
         </p>
+      ) : null}
+
+      {apiMessage ? (
+        <p className="text-sm font-medium text-destructive">{apiMessage}</p>
       ) : null}
 
       <BillFormDialog

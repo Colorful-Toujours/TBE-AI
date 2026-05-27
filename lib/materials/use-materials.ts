@@ -14,10 +14,14 @@ export function useMaterials(initialData?: Material[]) {
   });
 
   useEffect(() => {
-    setMaterials(loadMaterials());
-    return subscribeMaterials(() => {
+    const timer = window.setTimeout(() => setMaterials(loadMaterials()), 0);
+    const unsubscribe = subscribeMaterials(() => {
       setMaterials(loadMaterials());
     });
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribe();
+    };
   }, []);
 
   const persist = useCallback((next: Material[]) => {

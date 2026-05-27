@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
 
 import {
@@ -20,6 +20,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { recordOperation } from "@/lib/audit-log";
+import { createUser, deleteUser, listUsers, updateUser } from "@/lib/backend-api";
 import { getRoleLabel, ROLE_OPTIONS } from "@/lib/rbac";
 
 import { createUserColumns, type SystemUser } from "./columns";
@@ -58,6 +59,28 @@ export function UserTable({ initialData }: UserTableProps) {
   const [editingUser, setEditingUser] = useState<SystemUser | null>(null);
   const [deletingUser, setDeletingUser] = useState<SystemUser | null>(null);
   const [permissionUser, setPermissionUser] = useState<SystemUser | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [apiMessage, setApiMessage] = useState("");
+
+  const loadUsers = useCallback(async (params?: DataTableQueryParams) => {
+    setLoading(true);
+    setApiMessage("");
+    try {
+      const result = await listUsers(params);
+      setUsers(result.items);
+    } catch (error) {
+      setApiMessage(error instanceof Error ? error.message : "用户数据加载失败");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadUsers(query);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadUsers, query]);
 
   const handleCreate = useCallback(() => {
     setEditingUser(null);
@@ -77,56 +100,53 @@ export function UserTable({ initialData }: UserTableProps) {
     setPermissionUser(user);
   }, []);
 
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingUser) return;
-    setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
-    recordOperation({
-      action: "delete",
-      module: "user",
-      target: `用户 ${deletingUser.id}`,
-      detail: `删除用户：${deletingUser.name}`,
-    });
-    setDeletingUser(null);
+    setApiMessage("");
+    try {
+      await deleteUser(deletingUser.id);
+      setUsers((prev) => prev.filter((u) => u.id !== deletingUser.id));
+      recordOperation({
+        action: "delete",
+        module: "user",
+        target: `用户 ${deletingUser.id}`,
+        detail: `删除用户：${deletingUser.name}`,
+      });
+      setDeletingUser(null);
+    } catch (error) {
+      setApiMessage(error instanceof Error ? error.message : "删除用户失败");
+    }
   }, [deletingUser]);
 
   const handleFormSubmit = useCallback(
-    (values: UserFormValues) => {
-      if (editingUser) {
-        setUsers((prev) =>
-          prev.map((u) =>
-            u.id === editingUser.id
-              ? {
-                  ...values,
-                  id: editingUser.id,
-                  createdAt: editingUser.createdAt,
-                }
-              : u,
-          ),
-        );
-        recordOperation({
-          action: "update",
-          module: "user",
-          target: `用户 ${editingUser.id}`,
-          detail: `修改用户：${values.name}，角色 ${getRoleLabel(values.role)}`,
-        });
-      } else {
-        const newId = `u-${Date.now()}`;
-        setUsers((prev) => [
-          ...prev,
-          {
-            ...values,
-            id: newId,
-            createdAt: new Date().toISOString().slice(0, 10),
-          },
-        ]);
-        recordOperation({
-          action: "create",
-          module: "user",
-          target: `用户 ${newId}`,
-          detail: `新增用户：${values.name}，角色 ${getRoleLabel(values.role)}`,
-        });
+    async (values: UserFormValues) => {
+      setApiMessage("");
+      try {
+        if (editingUser) {
+          const updated = await updateUser(editingUser.id, values);
+          setUsers((prev) =>
+            prev.map((u) => (u.id === editingUser.id ? updated : u)),
+          );
+          recordOperation({
+            action: "update",
+            module: "user",
+            target: `用户 ${editingUser.id}`,
+            detail: `修改用户：${values.name}，角色 ${getRoleLabel(values.role)}`,
+          });
+        } else {
+          const created = await createUser(values);
+          setUsers((prev) => [...prev, created]);
+          recordOperation({
+            action: "create",
+            module: "user",
+            target: `用户 ${created.id}`,
+            detail: `新增用户：${values.name}，角色 ${getRoleLabel(values.role)}`,
+          });
+        }
+        setEditingUser(null);
+      } catch (error) {
+        setApiMessage(error instanceof Error ? error.message : "保存用户失败");
       }
-      setEditingUser(null);
     },
     [editingUser],
   );
@@ -152,6 +172,7 @@ export function UserTable({ initialData }: UserTableProps) {
           columns={columns}
           data={users}
           getRowId={(row) => row.id}
+          loading={loading}
           enableGlobalFilter={false}
           enableRowSelection={false}
           filters={userFilters}
@@ -170,6 +191,9 @@ export function UserTable({ initialData }: UserTableProps) {
           <p className="text-xs text-muted-foreground">
             当前查询：{JSON.stringify(query)}
           </p>
+        ) : null}
+        {apiMessage ? (
+          <p className="text-sm font-medium text-destructive">{apiMessage}</p>
         ) : null}
       </section>
 

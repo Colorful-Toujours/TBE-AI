@@ -13,8 +13,12 @@ export function useOperationLogs() {
   }, []);
 
   useEffect(() => {
-    refresh();
-    return subscribeOperationLogs(refresh);
+    const timer = window.setTimeout(refresh, 0);
+    const unsubscribe = subscribeOperationLogs(refresh);
+    return () => {
+      window.clearTimeout(timer);
+      unsubscribe();
+    };
   }, [refresh]);
 
   return { logs, refresh };

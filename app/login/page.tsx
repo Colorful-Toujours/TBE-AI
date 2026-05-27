@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { recordOperation } from "@/lib/audit-log";
+import { sendSmsCode } from "@/lib/backend-api";
 import { saveLoginPassword } from "@/lib/auth/credentials";
 import { setStoredUser } from "@/lib/auth/session";
 import { setToken } from "@/lib/request";
@@ -76,8 +77,42 @@ export default function LoginPage() {
   const [verificationCode, setVerificationCode] = useState("");
   const [hasAcceptedTerms, setHasAcceptedTerms] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSendingCode, setIsSendingCode] = useState(false);
+  const [smsCooldown, setSmsCooldown] = useState(0);
   const [errorMessage, setErrorMessage] = useState("");
   const wechatLoginUrl = useMemo(() => buildWechatLoginUrl(), []);
+
+  async function handleSendCode() {
+    const account = phone.trim();
+    setErrorMessage("");
+
+    if (!/^1\d{10}$/.test(account)) {
+      setErrorMessage("请输入正确的 11 位手机号");
+      return;
+    }
+
+    try {
+      setIsSendingCode(true);
+      const result = await sendSmsCode(account, "login");
+      setSmsCooldown(result.cooldown ?? 60);
+
+      const timer = window.setInterval(() => {
+        setSmsCooldown((current) => {
+          if (current <= 1) {
+            window.clearInterval(timer);
+            return 0;
+          }
+          return current - 1;
+        });
+      }, 1000);
+    } catch (error) {
+      setErrorMessage(
+        error instanceof Error ? error.message : "验证码发送失败，请稍后重试",
+      );
+    } finally {
+      setIsSendingCode(false);
+    }
+  }
 
   async function handleLogin(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -341,10 +376,16 @@ export default function LoginPage() {
                       }
                     />
                     <button
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-sm font-semibold text-blue-500 disabled:text-gray-300"
                       type="button"
+                      disabled={isSendingCode || smsCooldown > 0}
+                      onClick={handleSendCode}
                     >
-                      获取验证码
+                      {smsCooldown > 0
+                        ? `${smsCooldown}s`
+                        : isSendingCode
+                          ? "发送中"
+                          : "获取验证码"}
                     </button>
                   </label>
                 ) : (

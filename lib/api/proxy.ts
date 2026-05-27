@@ -4,7 +4,7 @@ import { fail, ok } from "./response";
 import type { ApiHandler, ApiParams } from "./types";
 import { createRoute } from "./create-route";
 
-const backendUrl = process.env.BACKEND_URL ?? "http://localhost:3003";
+const backendUrl = process.env.BACKEND_URL ?? "http://localhost:8080";
 
 
 type ProxyOptions = {

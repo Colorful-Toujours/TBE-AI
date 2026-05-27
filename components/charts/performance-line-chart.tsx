@@ -58,7 +58,8 @@ export function PerformanceLineChart() {
   const [range, setRange] = useState<string>("12m");
 
   useEffect(() => {
-    setMounted(true);
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const data =

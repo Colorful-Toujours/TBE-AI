@@ -4,7 +4,6 @@ import { useEffect, useState } from "react";
 import { Monitor, Moon, Palette, Sun } from "lucide-react";
 import { useTheme } from "next-themes";
 
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const themeOptions = [
@@ -37,7 +36,8 @@ export function ThemeSettings({ onThemeChange }: ThemeSettingsProps) {
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    setMounted(true);
+    const timer = window.setTimeout(() => setMounted(true), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function handleSelect(value: string) {

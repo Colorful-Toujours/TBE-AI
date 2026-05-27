@@ -128,8 +128,11 @@ export function BillFormDialog({
 
   useEffect(() => {
     if (open) {
-      setDraft(billToDraft(bill, catalog));
-      setError("");
+      const timer = window.setTimeout(() => {
+        setDraft(billToDraft(bill, catalog));
+        setError("");
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [open, bill, catalog]);
 

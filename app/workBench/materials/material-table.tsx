@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { useMaterials } from "@/lib/materials";
 import { Plus } from "lucide-react";
 
@@ -21,6 +21,12 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { recordOperation } from "@/lib/audit-log";
+import {
+  createMaterial,
+  deleteMaterial,
+  listMaterials,
+  updateMaterial,
+} from "@/lib/backend-api";
 
 import { createMaterialColumns, type Material } from "./columns";
 import {
@@ -62,6 +68,33 @@ export function MaterialTable({ initialData }: MaterialTableProps) {
   const [deletingMaterial, setDeletingMaterial] = useState<Material | null>(
     null,
   );
+  const [loading, setLoading] = useState(false);
+  const [apiMessage, setApiMessage] = useState("");
+
+  const loadMaterialsFromApi = useCallback(
+    async (params?: DataTableQueryParams) => {
+      setLoading(true);
+      setApiMessage("");
+      try {
+        const result = await listMaterials(params);
+        setMaterials(result.items);
+      } catch (error) {
+        setApiMessage(
+          error instanceof Error ? error.message : "材料数据加载失败",
+        );
+      } finally {
+        setLoading(false);
+      }
+    },
+    [setMaterials],
+  );
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadMaterialsFromApi(query);
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [loadMaterialsFromApi, query]);
 
   const handleCreate = useCallback(() => {
     setEditingMaterial(null);
@@ -77,45 +110,53 @@ export function MaterialTable({ initialData }: MaterialTableProps) {
     setDeletingMaterial(material);
   }, []);
 
-  const handleDeleteConfirm = useCallback(() => {
+  const handleDeleteConfirm = useCallback(async () => {
     if (!deletingMaterial) return;
-    setMaterials(materials.filter((m) => m.id !== deletingMaterial.id));
-    recordOperation({
-      action: "delete",
-      module: "material",
-      target: `材料 ${deletingMaterial.id}`,
-      detail: `删除材料：${deletingMaterial.name}`,
-    });
-    setDeletingMaterial(null);
+    setApiMessage("");
+    try {
+      await deleteMaterial(deletingMaterial.id);
+      setMaterials(materials.filter((m) => m.id !== deletingMaterial.id));
+      recordOperation({
+        action: "delete",
+        module: "material",
+        target: `材料 ${deletingMaterial.id}`,
+        detail: `删除材料：${deletingMaterial.name}`,
+      });
+      setDeletingMaterial(null);
+    } catch (error) {
+      setApiMessage(error instanceof Error ? error.message : "删除材料失败");
+    }
   }, [deletingMaterial, materials, setMaterials]);
 
   const handleFormSubmit = useCallback(
-    (values: MaterialFormValues) => {
-      if (editingMaterial) {
-        setMaterials(
-          materials.map((m) =>
-            m.id === editingMaterial.id
-              ? { ...values, id: editingMaterial.id }
-              : m,
-          ),
-        );
-        recordOperation({
-          action: "update",
-          module: "material",
-          target: `材料 ${editingMaterial.id}`,
-          detail: `修改材料：${values.name}，单价 ¥${values.unitPrice}/${values.unit}`,
-        });
-      } else {
-        const newId = `mat-${Date.now()}`;
-        setMaterials([...materials, { ...values, id: newId }]);
-        recordOperation({
-          action: "create",
-          module: "material",
-          target: `材料 ${newId}`,
-          detail: `新增材料：${values.name}，库存 ${values.stock} ${values.unit}`,
-        });
+    async (values: MaterialFormValues) => {
+      setApiMessage("");
+      try {
+        if (editingMaterial) {
+          const updated = await updateMaterial(editingMaterial.id, values);
+          setMaterials(
+            materials.map((m) => (m.id === editingMaterial.id ? updated : m)),
+          );
+          recordOperation({
+            action: "update",
+            module: "material",
+            target: `材料 ${editingMaterial.id}`,
+            detail: `修改材料：${values.name}，单价 ¥${values.unitPrice}/${values.unit}`,
+          });
+        } else {
+          const created = await createMaterial(values);
+          setMaterials([...materials, created]);
+          recordOperation({
+            action: "create",
+            module: "material",
+            target: `材料 ${created.id}`,
+            detail: `新增材料：${values.name}，库存 ${values.stock} ${values.unit}`,
+          });
+        }
+        setEditingMaterial(null);
+      } catch (error) {
+        setApiMessage(error instanceof Error ? error.message : "保存材料失败");
       }
-      setEditingMaterial(null);
     },
     [editingMaterial, materials, setMaterials],
   );
@@ -139,6 +180,7 @@ export function MaterialTable({ initialData }: MaterialTableProps) {
         columns={columns}
         data={materials}
         getRowId={(row) => row.id}
+        loading={loading}
         enableGlobalFilter={false}
         enableRowSelection={false}
         filters={materialFilters}
@@ -157,6 +199,10 @@ export function MaterialTable({ initialData }: MaterialTableProps) {
         <p className="text-xs text-muted-foreground">
           当前查询：{JSON.stringify(query)}
         </p>
+      ) : null}
+
+      {apiMessage ? (
+        <p className="text-sm font-medium text-destructive">{apiMessage}</p>
       ) : null}
 
       <MaterialFormDialog

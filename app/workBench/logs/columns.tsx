@@ -79,15 +79,15 @@ export const columns: ColumnDef<OperationLog>[] = [
     ),
     filterFn: "equalsString",
     cell: ({ row }) => {
-      const module = row.getValue("module") as LogModule;
+      const logModule = row.getValue("module") as LogModule;
       return (
         <span
           className={cn(
             "inline-flex rounded-md px-2 py-0.5 text-xs font-medium",
-            moduleClass[module],
+            moduleClass[logModule],
           )}
         >
-          {getModuleLabel(module)}
+          {getModuleLabel(logModule)}
         </span>
       );
     },

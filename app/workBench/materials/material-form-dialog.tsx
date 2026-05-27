@@ -72,8 +72,11 @@ export function MaterialFormDialog({
 
   useEffect(() => {
     if (open) {
-      setDraft(materialToDraft(material));
-      setError("");
+      const timer = window.setTimeout(() => {
+        setDraft(materialToDraft(material));
+        setError("");
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [open, material]);
 

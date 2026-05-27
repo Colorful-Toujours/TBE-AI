@@ -69,8 +69,11 @@ export function UserFormDialog({
 
   useEffect(() => {
     if (open) {
-      setDraft(userToDraft(user));
-      setError("");
+      const timer = window.setTimeout(() => {
+        setDraft(userToDraft(user));
+        setError("");
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, [open, user]);
 

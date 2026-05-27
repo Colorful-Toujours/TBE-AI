@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { recordOperation } from "@/lib/audit-log";
-import { changePassword } from "@/lib/auth/credentials";
+import { updatePassword, updateProfile } from "@/lib/backend-api";
 import {
   getStoredUser,
   getUserInitials,
@@ -44,12 +44,15 @@ export function SettingsForm() {
   useEffect(() => {
     const user = getStoredUser();
     if (user) {
-      setProfile({
-        name: user.name ?? "",
-        email: user.email ?? "",
-        phone: user.phone ?? "",
-        avatar: user.avatar ?? "",
-      });
+      const timer = window.setTimeout(() => {
+        setProfile({
+          name: user.name ?? "",
+          email: user.email ?? "",
+          phone: user.phone ?? "",
+          avatar: user.avatar ?? "",
+        });
+      }, 0);
+      return () => window.clearTimeout(timer);
     }
   }, []);
 
@@ -64,13 +67,19 @@ export function SettingsForm() {
 
     setSavingProfile(true);
     try {
-      const existing = getStoredUser();
-      const updated: StoredUser = {
-        id: existing?.id,
+      const updatedFromApi = await updateProfile({
         name: profile.name.trim(),
         email: profile.email.trim() || null,
         phone: profile.phone.trim() || null,
         avatar: profile.avatar.trim() || null,
+      });
+
+      const updated: StoredUser = {
+        id: updatedFromApi.id,
+        name: updatedFromApi.name ?? profile.name.trim(),
+        email: updatedFromApi.email ?? (profile.email.trim() || null),
+        phone: updatedFromApi.phone ?? (profile.phone.trim() || null),
+        avatar: updatedFromApi.avatar ?? (profile.avatar.trim() || null),
       };
 
       setStoredUser(updated);
@@ -88,7 +97,7 @@ export function SettingsForm() {
     }
   }
 
-  function handlePasswordSubmit(event: React.FormEvent) {
+  async function handlePasswordSubmit(event: React.FormEvent) {
     event.preventDefault();
     setPasswordMessage(null);
 
@@ -112,28 +121,28 @@ export function SettingsForm() {
     }
 
     setSavingPassword(true);
-    const result = changePassword(
-      user.id,
-      user.name,
-      passwordForm.current,
-      passwordForm.next,
-    );
+    try {
+      await updatePassword({
+        currentPassword: passwordForm.current,
+        newPassword: passwordForm.next,
+      });
 
-    if (!result.ok) {
-      setPasswordMessage({ type: "error", text: result.message });
+      setPasswordForm({ current: "", next: "", confirm: "" });
+      recordOperation({
+        action: "update",
+        module: "settings",
+        target: "登录密码",
+        detail: "用户修改登录密码",
+      });
+      setPasswordMessage({ type: "success", text: "密码修改成功" });
+    } catch (error) {
+      setPasswordMessage({
+        type: "error",
+        text: error instanceof Error ? error.message : "密码修改失败",
+      });
+    } finally {
       setSavingPassword(false);
-      return;
     }
-
-    setPasswordForm({ current: "", next: "", confirm: "" });
-    recordOperation({
-      action: "update",
-      module: "settings",
-      target: "登录密码",
-      detail: "用户修改登录密码",
-    });
-    setPasswordMessage({ type: "success", text: "密码修改成功" });
-    setSavingPassword(false);
   }
 
   const initials = getUserInitials(profile.name);
