@@ -1,28 +1,38 @@
 "use client"
 
+import Image from "next/image"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { useState } from "react"
 import { Menu, X } from "lucide-react"
+import { ThemeToggle } from "@/components/theme-toggle"
 
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 backdrop-blur-md">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-border/60 bg-background/80 backdrop-blur-md">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-6 py-4 lg:px-8">
         <div className="flex lg:flex-1">
           <Link href="/" className="flex items-center gap-3">
-            <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-linear-to-br from-violet-500 to-purple-600 text-white font-bold text-base shadow-lg shadow-violet-200">
-              TBE
+            <div className="relative flex size-10 items-center justify-center overflow-hidden rounded-xl bg-card shadow-lg shadow-violet-500/20 ring-1 ring-border">
+              <Image
+                src="/TBE.png"
+                alt="TBE"
+                width={40}
+                height={40}
+                className="size-10 object-contain"
+                priority
+              />
             </div>
           </Link>
         </div>
 
-        <div className="flex lg:hidden">
+        <div className="flex items-center gap-2 lg:hidden">
+          <ThemeToggle />
           <button
             type="button"
-            className="inline-flex items-center justify-center rounded-md p-2.5 text-foreground"
+            className="inline-flex items-center justify-center rounded-md p-2.5 text-foreground hover:bg-accent hover:text-accent-foreground"
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
           >
             {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -45,6 +55,7 @@ export function Header() {
         </div>
 
         <div className="hidden lg:flex lg:flex-1 lg:justify-end lg:gap-x-3">
+          <ThemeToggle />
           <Button asChild variant="ghost" className="text-sm font-medium rounded-full px-5">
             <Link href="/login">登录</Link>
           </Button>
@@ -58,7 +69,7 @@ export function Header() {
       </nav>
 
       {mobileMenuOpen && (
-        <div className="lg:hidden bg-white border-t border-border/50">
+        <div className="lg:hidden border-t border-border/50 bg-background/95 backdrop-blur-md">
           <div className="space-y-1 px-6 py-4">
             <Link
               href="#features"
